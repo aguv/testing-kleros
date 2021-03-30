@@ -16,22 +16,35 @@ import Col from 'react-bootstrap/Col'
 import Deploy from './Deploy.js'
 import Interact from './Interact.js'
 
-class App extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = {
-      activeAddress: '0x0000000000000000000000000000000000000000',
-      lastDeployedAddress: '0x0000000000000000000000000000000000000000'
-    }
-    this.ipfs = new Ipfs({
+import { useState, useEffect } from 'react';
+
+export default function App() {
+    const [activeAddress, setActiveAddress] = useState('0x0000000000000000000000000000000000000000')
+    const [lastDeployedAddress, setLastDeployedAddress] = useState('0x0000000000000000000000000000000000000000')
+    const [accounts, setAccounts] = React.useState([]);
+    const [balance, setBalance] = React.useState(false);
+
+    const ipfs = new Ipfs({
       host: 'ipfs.kleros.io',
       port: 5001,
       protocol: 'https'
     })
-  }
 
-  deploy = async (amount, payee, arbitrator, title, description) => {
-    const { activeAddress } = this.state
+    useEffect(() => {
+
+      if (window.web3 && window.web3.currentProvider.isMetaMask)
+        window.web3.eth.getAccounts((_, accounts) => {
+          setActiveAddress(accounts[0])
+        })
+      else console.error('MetaMask account not detected :(')
+
+      window.ethereum.on('accountsChanged', accounts => {
+        setActiveAddress(accounts[0])
+      })
+    }, []);
+
+  const deploy = async (amount, payee, arbitrator, title, description) => {
+
 
     let metaevidence = generateMetaevidence(
       web3.utils.toChecksumAddress(activeAddress),
@@ -57,14 +70,13 @@ class App extends React.Component {
         ipfsHashMetaEvidenceObj[0]['path']
     )
 
-    this.setState({ lastDeployedAddress: result._address })
+    setLastDeployedAddress(result._address)
   }
 
-  load = contractAddress =>
+  const load = contractAddress =>
     SimpleEscrowWithERC1497.contractInstance(contractAddress)
 
-  reclaimFunds = async (contractAddress, value) => {
-    const { activeAddress } = this.state
+  const reclaimFunds = async (contractAddress, value) => {
     await SimpleEscrowWithERC1497.reclaimFunds(
       activeAddress,
       contractAddress,
@@ -72,14 +84,12 @@ class App extends React.Component {
     )
   }
 
-  releaseFunds = async contractAddress => {
-    const { activeAddress } = this.state
+  const releaseFunds = async contractAddress => {
 
     await SimpleEscrowWithERC1497.releaseFunds(activeAddress, contractAddress)
   }
 
-  depositArbitrationFeeForPayee = (contractAddress, value) => {
-    const { activeAddress } = this.state
+  const depositArbitrationFeeForPayee = (contractAddress, value) => {
 
     SimpleEscrowWithERC1497.depositArbitrationFeeForPayee(
       activeAddress,
@@ -88,34 +98,33 @@ class App extends React.Component {
     )
   }
 
-  reclamationPeriod = contractAddress =>
+  const reclamationPeriod = contractAddress =>
     SimpleEscrowWithERC1497.reclamationPeriod(contractAddress)
 
-  arbitrationFeeDepositPeriod = contractAddress =>
+  const arbitrationFeeDepositPeriod = contractAddress =>
     SimpleEscrowWithERC1497.arbitrationFeeDepositPeriod(contractAddress)
 
-  remainingTimeToReclaim = contractAddress =>
+  const remainingTimeToReclaim = contractAddress =>
     SimpleEscrowWithERC1497.remainingTimeToReclaim(contractAddress)
 
-  remainingTimeToDepositArbitrationFee = contractAddress =>
+  const remainingTimeToDepositArbitrationFee = contractAddress =>
     SimpleEscrowWithERC1497.remainingTimeToDepositArbitrationFee(
       contractAddress
     )
 
-  arbitrationCost = (arbitratorAddress, extraData) =>
+  const arbitrationCost = (arbitratorAddress, extraData) =>
     Arbitrator.arbitrationCost(arbitratorAddress, extraData)
 
-  arbitrator = contractAddress =>
+  const arbitrator = contractAddress =>
     SimpleEscrowWithERC1497.arbitrator(contractAddress)
 
-  status = contractAddress => SimpleEscrowWithERC1497.status(contractAddress)
+  const status = contractAddress => SimpleEscrowWithERC1497.status(contractAddress)
 
-  value = contractAddress => SimpleEscrowWithERC1497.value(contractAddress)
+  const value = contractAddress => SimpleEscrowWithERC1497.value(contractAddress)
 
-  submitEvidence = async (contractAddress, evidenceBuffer) => {
-    const { activeAddress } = this.state
+  const submitEvidence = async (contractAddress, evidenceBuffer) => {
 
-    const result = await ipfsPublish('name', evidenceBuffer)
+  const result = await ipfsPublish('name', evidenceBuffer)
 
     let evidence = generateEvidence(
       '/ipfs/' + result[0]['hash'],
@@ -135,21 +144,9 @@ class App extends React.Component {
     )
   }
 
-  async componentDidMount() {
-    console.log(window.web3);
-    if (window.web3 && window.web3.currentProvider.isMetaMask)
-      window.web3.eth.getAccounts((_, accounts) => {
-        this.setState({ activeAddress: accounts[0] })
-      })
-    else console.error('MetaMask account not detected :(')
 
-    window.ethereum.on('accountsChanged', accounts => {
-      this.setState({ activeAddress: accounts[0] })
-    })
-  }
 
-  render() {
-    const { lastDeployedAddress } = this.state
+
     return (
       <Container>
         <Row>
@@ -162,26 +159,26 @@ class App extends React.Component {
 
         <Row>
           <Col>
-            <Deploy deployCallback={this.deploy} />
+            <Deploy deployCallback={deploy} />
           </Col>
           <Col>
             <Interact
-              arbitratorCallback={this.arbitrator}
-              arbitrationCostCallback={this.arbitrationCost}
+              arbitratorCallback={arbitrator}
+              arbitrationCostCallback={arbitrationCost}
               escrowAddress={lastDeployedAddress}
-              loadCallback={this.load}
-              reclaimFundsCallback={this.reclaimFunds}
-              releaseFundsCallback={this.releaseFunds}
+              loadCallback={load}
+              reclaimFundsCallback={reclaimFunds}
+              releaseFundsCallback={releaseFunds}
               depositArbitrationFeeForPayeeCallback={
-                this.depositArbitrationFeeForPayee
+                depositArbitrationFeeForPayee
               }
-              remainingTimeToReclaimCallback={this.remainingTimeToReclaim}
+              remainingTimeToReclaimCallback={remainingTimeToReclaim}
               remainingTimeToDepositArbitrationFeeCallback={
-                this.remainingTimeToDepositArbitrationFee
+                remainingTimeToDepositArbitrationFee
               }
-              statusCallback={this.status}
-              valueCallback={this.value}
-              submitEvidenceCallback={this.submitEvidence}
+              statusCallback={status}
+              valueCallback={value}
+              submitEvidenceCallback={submitEvidence}
             />
           </Col>
         </Row>
@@ -205,7 +202,5 @@ class App extends React.Component {
         </Row>
       </Container>
     )
-  }
+  
 }
-
-export default App
