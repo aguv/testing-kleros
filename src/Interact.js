@@ -1,4 +1,4 @@
-import React from 'react'
+import { useState, useEffect } from 'react'
 import Container from 'react-bootstrap/Container'
 import Form from 'react-bootstrap/Form'
 import Button from 'react-bootstrap/Button'
@@ -7,136 +7,178 @@ import ButtonGroup from 'react-bootstrap/ButtonGroup'
 import Card from 'react-bootstrap/Card'
 import InputGroup from 'react-bootstrap/InputGroup'
 
-class Interact extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = {
-      escrowAddress: this.props.escrowAddress,
-      remainingTimeToReclaim: 'Unassigned',
-      remainingTimeToDepositArbitrationFee: 'Unassigned',
-      status: 'Unassigned',
-      arbitrator: 'Unassigned',
-      value: 'Unassigned'
-    }
+export default function Interact ({
+      escrowAddressInProps, 
+      statusCallback,
+      loadCallback,
+      arbitratorCallback,
+      arbitrationCostCallback, 
+      reclaimFundsCallback,
+      releaseFundsCallback,
+      submitEvidenceCallback,
+      depositArbitrationFeeForPayeeCallback,
+      valueCallback,
+      remainingTimeToReclaimCallback,
+      remainingTimeToDepositArbitrationFeeCallback}) {
+
+  const initialValues = {
+    escrowAddress: escrowAddressInProps,
+    remainingTimeToReclaim: 'Unassigned',
+    remainingTimeToDepositArbitrationFee: 'Unassigned',
+    status: 'Unassigned',
+    arbitrator: 'Unassigned',
+    value: 'Unassigned',
+    fileInput: 'Unassigned'
+  }
+  const [values, setValues] = useState(initialValues)
+
+  // const handleInputChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setValues({
+  //     ...values,
+  //     [name]: value,
+  //   });
+  // };
+
+  useEffect(()=>{
+      setValues({
+        ...values,
+        escrowAddress})
+
+      updateBadges()
+
+    }, [escrowAddressInProps])
+
+
+  const onEscrowAddressChange = async e => {
+    await setValues({ 
+      ...values,
+      escrowAddress: e.target.value })
+
+    updateBadges()
   }
 
-  async componentDidUpdate(prevProps) {
-    if (this.props.escrowAddress !== prevProps.escrowAddress) {
-      await this.setState({ escrowAddress: this.props.escrowAddress })
-      this.updateBadges()
-    }
-  }
-
-  onEscrowAddressChange = async e => {
-    await this.setState({ escrowAddress: e.target.value })
-    this.updateBadges()
-  }
-
-  updateBadges = async () => {
-    const { escrowAddress, status } = this.state
+  const updateBadges = async () => {
+    const { escrowAddress, status } = values
 
     try {
-      await this.setState({
-        status: await this.props.statusCallback(escrowAddress)
+      await setValues({
+        ...values,
+        status: await statusCallback(escrowAddress)
       })
     } catch (e) {
       console.error(e)
-      this.setState({ status: 'ERROR' })
+      setValues({
+        ...values,
+        status: 'ERROR' })
     }
 
     try {
-      this.setState({
-        arbitrator: await this.props.arbitratorCallback(escrowAddress)
+      //! ESTE AWAIT NO ESTABA !!!!!!!!!!
+      setValues({
+        ...values,
+        arbitrator: await arbitratorCallback(escrowAddress)
       })
     } catch (e) {
       console.error(e)
-      this.setState({ arbitrator: 'ERROR' })
+      setValues({
+        ...values,
+        arbitrator: 'ERROR' })
     }
 
     try {
-      this.setState({ value: await this.props.valueCallback(escrowAddress) })
+      setValues({
+        ...values,
+        value: await valueCallback(escrowAddress) })
+
     } catch (e) {
-      console.error(e)
-      this.setState({ value: 'ERROR' })
+
+        console.error(e)
+
+        setValues({
+          ...values,
+          value: 'ERROR' })
     }
 
     if (Number(status) === 0)
       try {
-        this.setState({
-          remainingTimeToReclaim: await this.props.remainingTimeToReclaimCallback(
-            escrowAddress
-          )
+        setValues({
+          ...values,
+          remainingTimeToReclaim: await remainingTimeToReclaimCallback(escrowAddress)
         })
       } catch (e) {
         console.error(e)
-        this.setState({ status: 'ERROR' })
+
+        setValues({
+          ...values,
+          status: 'ERROR' })
       }
 
     if (Number(status) === 1)
       try {
-        this.setState({
-          remainingTimeToDepositArbitrationFee: await this.props.remainingTimeToDepositArbitrationFeeCallback(
-            escrowAddress
-          )
+        setValues({
+          ...values,
+          remainingTimeToDepositArbitrationFee: await remainingTimeToDepositArbitrationFeeCallback(escrowAddress)
         })
       } catch (e) {
         console.error(e)
-        this.setState({ status: 'ERROR' })
+        setValues({
+          ...values,
+          status: 'ERROR' })
       }
   }
 
-  onReclaimFundsButtonClick = async e => {
+  const onReclaimFundsButtonClick = async e => {
     e.preventDefault()
-    const { escrowAddress } = this.state
+    const { escrowAddress } = values
 
-    let arbitrator = await this.props.arbitratorCallback(escrowAddress)
-    console.log(arbitrator)
+    let arbitrator = await arbitratorCallback(escrowAddress)
+    console.log(arbitrator, 'ARBITRATOR')
 
-    let arbitrationCost = await this.props.arbitrationCostCallback(
+    let arbitrationCost = await arbitrationCostCallback(arbitrator, '')
+
+    await reclaimFundsCallback(escrowAddress, arbitrationCost)
+
+    updateBadges()
+  }
+
+  const onReleaseFundsButtonClick = async e => {
+    e.preventDefault()
+    const { escrowAddress } = values
+
+    await releaseFundsCallback(escrowAddress)
+    updateBadges()
+  }
+
+  const onDepositArbitrationFeeFromPayeeButtonClicked = async e => {
+    e.preventDefault()
+    const { escrowAddress } = values
+
+    let arbitrator = await arbitratorCallback(escrowAddress)
+    let arbitrationCost = await arbitrationCostCallback(
       arbitrator,
       ''
     )
 
-    await this.props.reclaimFundsCallback(escrowAddress, arbitrationCost)
-
-    this.updateBadges()
-  }
-
-  onReleaseFundsButtonClick = async e => {
-    e.preventDefault()
-    const { escrowAddress } = this.state
-
-    await this.props.releaseFundsCallback(escrowAddress)
-    this.updateBadges()
-  }
-
-  onDepositArbitrationFeeFromPayeeButtonClicked = async e => {
-    e.preventDefault()
-    const { escrowAddress } = this.state
-
-    let arbitrator = await this.props.arbitratorCallback(escrowAddress)
-    let arbitrationCost = await this.props.arbitrationCostCallback(
-      arbitrator,
-      ''
-    )
-
-    await this.props.depositArbitrationFeeForPayeeCallback(
+    await depositArbitrationFeeForPayeeCallback(
       escrowAddress,
       arbitrationCost
     )
 
-    this.updateBadges()
+    updateBadges()
   }
 
-  onInput = e => {
+  const onInput = e => {
     console.log(e.target.files)
-    this.setState({ fileInput: e.target.files[0] })
+    setValues({ 
+      ...values,
+      fileInput: e.target.files[0] })
     console.log('file input')
   }
 
-  onSubmitButtonClick = async e => {
+  const onSubmitButtonClick = async e => {
     e.preventDefault()
-    const { escrowAddress, fileInput } = this.state
+    const { escrowAddress, fileInput } = values
     console.log('submit clicked')
     console.log(fileInput)
 
@@ -144,14 +186,12 @@ class Interact extends React.Component {
     reader.readAsArrayBuffer(fileInput)
     reader.addEventListener('loadend', async () => {
       const buffer = Buffer.from(reader.result)
-      this.props.submitEvidenceCallback(escrowAddress, buffer)
+      submitEvidenceCallback(escrowAddress, buffer)
     })
   }
 
-  render() {
-    const { escrowAddress, fileInput } = this.state
+    const { escrowAddress, fileInput } = values
 
-    console.log(this.props);
     return (
       <Container className="container-fluid d-flex h-100 flex-column">
         <Card className="h-100 my-4 text-center" style={{ width: 'auto' }}>
@@ -163,7 +203,7 @@ class Interact extends React.Component {
                 as="input"
                 rows="1"
                 value={escrowAddress}
-                onChange={this.onEscrowAddressChange}
+                onChange={onEscrowAddressChange}
               />
             </Form.Group>
             <Card.Subtitle className="mt-3 mb-1 text-muted">
@@ -171,28 +211,28 @@ class Interact extends React.Component {
             </Card.Subtitle>
 
             <Badge className="m-1" pill variant="info">
-              Status Code: {this.state.status}
+              Status Code: {values.status}
             </Badge>
             <Badge className="m-1" pill variant="info">
-              Escrow Amount in Weis: {this.state.value}
+              Escrow Amount in Weis: {values.value}
             </Badge>
             <Badge className="m-1" pill variant="info">
               Remaining Time To Reclaim Funds:{' '}
-              {this.state.remainingTimeToReclaim}
+              {values.remainingTimeToReclaim}
             </Badge>
             <Badge className="m-1" pill variant="info">
               Remaining Time To Deposit Arbitration Fee:{' '}
-              {this.state.remainingTimeToDepositArbitrationFee}
+              {values.remainingTimeToDepositArbitrationFee}
             </Badge>
             <Badge className="m-1" pill variant="info">
-              Arbitrator: {this.state.arbitrator}
+              Arbitrator: {values.arbitrator}
             </Badge>
             <ButtonGroup className="mt-3">
               <Button
                 className="mr-2"
                 variant="primary"
                 type="button"
-                onClick={this.onReleaseFundsButtonClick}
+                onClick={onReleaseFundsButtonClick}
               >
                 Release
               </Button>
@@ -200,14 +240,14 @@ class Interact extends React.Component {
                 className="mr-2"
                 variant="secondary"
                 type="button"
-                onClick={this.onReclaimFundsButtonClick}
+                onClick={onReclaimFundsButtonClick}
               >
                 Reclaim
               </Button>
               <Button
                 variant="secondary"
                 type="button"
-                onClick={this.onDepositArbitrationFeeFromPayeeButtonClicked}
+                onClick={onDepositArbitrationFeeFromPayeeButtonClicked}
                 block
               >
                 Deposit Arbitration Fee For Payee
@@ -220,7 +260,7 @@ class Interact extends React.Component {
                     type="file"
                     className="custom-file-input"
                     id="inputGroupFile04"
-                    onInput={this.onInput}
+                    onInput={onInput}
                   />
                   <label
                     className="text-left custom-file-label"
@@ -233,7 +273,7 @@ class Interact extends React.Component {
                   <button
                     className="btn btn-primary"
                     type="button"
-                    onClick={this.onSubmitButtonClick}
+                    onClick={onSubmitButtonClick}
                   >
                     Submit
                   </button>
@@ -245,6 +285,5 @@ class Interact extends React.Component {
       </Container>
     )
   }
-}
 
-export default Interact
+
