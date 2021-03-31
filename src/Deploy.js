@@ -3,53 +3,37 @@ import Container from 'react-bootstrap/Container'
 import Form from 'react-bootstrap/Form'
 import Button from 'react-bootstrap/Button'
 import Card from 'react-bootstrap/Card'
+import { useState, useEffect } from 'react';
 
-class Deploy extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = {
-      amount: '',
-      payee: '',
-      arbitrator: '',
-      title: '',
-      description: ''
-    }
+export default function Deploy (props) {
+
+  const initialValues = {
+    amount: '',
+    payee: '',
+    arbitrator: '',
+    title: '',
+    description: ''
   }
+  const toBeSaved;
 
-  onAmountChange = e => {
-    this.setState({ amount: e.target.value })
-  }
+  const [values, setValues] = useState(initialValues)
 
-  onPayeeChange = e => {
-    this.setState({ payee: e.target.value })
-  }
 
-  onArbitratorChange = e => {
-    this.setState({ arbitrator: e.target.value })
-  }
+  
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setValues({
+      ...values,
+      [name]: value,
+    });
+  };
 
-  onTitleChange = e => {
-    this.setState({ title: e.target.value })
-  }
+  const handleSubmit = async e => {
+    const {amount, payee, arbitrator, title, description} = values
 
-  onDescriptionChange = e => {
-    this.setState({ description: e.target.value })
-  }
-
-  onDeployButtonClick = async e => {
     e.preventDefault()
-    const { amount, payee, arbitrator, title, description } = this.state
-    console.log(arbitrator)
-    await this.props.deployCallback(
-      amount,
-      payee,
-      arbitrator,
-      title,
-      description
-    )
+    await props.deployCallback(amount, payee, arbitrator, title, description)
   }
-  render() {
-    const { amount, payee, arbitrator, title, description } = this.state
 
     return (
       <Container>
@@ -61,51 +45,56 @@ class Deploy extends React.Component {
                 <Form.Control
                   as="input"
                   rows="1"
-                  value={amount}
-                  onChange={this.onAmountChange}
+                  value={values.amount}
+                  onChange={handleInputChange}
                   placeholder={'Escrow Amount in Weis'}
+                  name={'amount'}
                 />
               </Form.Group>
               <Form.Group controlId="payee">
                 <Form.Control
                   as="input"
                   rows="1"
-                  value={payee}
-                  onChange={this.onPayeeChange}
+                  value={values.payee}
+                  onChange={handleInputChange}
                   placeholder={'Payee Address'}
+                  name={'payee'}
                 />
               </Form.Group>
               <Form.Group controlId="arbitrator">
                 <Form.Control
                   as="input"
                   rows="1"
-                  value={arbitrator}
-                  onChange={this.onArbitratorChange}
+                  value={values.arbitrator}
+                  onChange={handleInputChange}
                   placeholder={'Arbitrator Address'}
+                  name={'arbitrator'}
                 />
               </Form.Group>
               <Form.Group controlId="title">
                 <Form.Control
                   as="input"
                   rows="1"
-                  value={title}
-                  onChange={this.onTitleChange}
+                  value={values.title}
+                  onChange={handleInputChange}
                   placeholder={'Title'}
+                  name={'title'}
                 />
               </Form.Group>
               <Form.Group controlId="description">
                 <Form.Control
                   as="input"
                   rows="1"
-                  value={description}
-                  onChange={this.onDescriptionChange}
+                  value={values.description}
+                  onChange={handleInputChange}
                   placeholder={'Describe The Agreement'}
+                  name={'description'}
                 />
               </Form.Group>
               <Button
                 variant="primary"
                 type="button"
-                onClick={this.onDeployButtonClick}
+                onClick={handleSubmit}
                 block
               >
                 Deploy
@@ -116,6 +105,3 @@ class Deploy extends React.Component {
       </Container>
     )
   }
-}
-
-export default Deploy
